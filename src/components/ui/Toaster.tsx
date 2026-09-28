@@ -1,5 +1,4 @@
 'use client'
-import React from 'react'
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react'
 import { X, CheckCircle, AlertCircle, AlertTriangle } from 'lucide-react'
 import { cn } from '@/utils'

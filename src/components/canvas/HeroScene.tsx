@@ -1,267 +1,893 @@
 'use client'
-import React from 'react'
+
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { useRef, useMemo, useEffect } from 'react'
 import * as THREE from 'three'
 
-interface ParticleSystemProps {
-  count: number
-  mouse: { current: { x: number; y: number } }
-  time: { current: number }
+interface GraphNode {
+  id: string
+  type: 'project' | 'skill'
+  label: string
+  category: string
+  proficiency?: number
+  featured?: boolean
+  position: THREE.Vector3
+  connections: string[]
+  color: number
+  size: number
 }
 
-// Particle System
-function ParticleSystem({ count = 1500, mouse, time }: ParticleSystemProps) {
-  const pointsRef = useRef<THREE.Points | null>(null)
-  const positionsRef = useRef<Float32Array | null>(null)
-  const velocitiesRef = useRef<Float32Array | null>(null)
-  const phasesRef = useRef<Float32Array | null>(null)
+interface Packet {
+  id: number
+  progress: number
+  speed: number
+  color: number
+  sourceId: string
+  targetId: string
+}
+
+const CATEGORY_COLORS: Record<string, number> = {
+  languages: 0xea580c,
+  frameworks: 0xd97706,
+  devops: 0xf97316,
+  tools: 0xfb923c,
+  concepts: 0xfdba74,
+  systems: 0xea580c,
+  hackathons: 0xd97706,
+  backend: 0xf97316,
+  opensource: 0xfb923c,
+  fullstack: 0xfdba74,
+}
+
+const PROJECTS_DATA = [
+  {
+    id: 'deployguard',
+    label: 'DeployGuard',
+    category: 'systems',
+    featured: true,
+    skills: ['Python', 'FastAPI', 'Docker', 'Kubernetes', 'DevOps'],
+  },
+  {
+    id: 'chatapp',
+    label: 'Chat App',
+    category: 'fullstack',
+    featured: true,
+    skills: ['React', 'Node.js', 'Socket.IO', 'MongoDB', 'JWT'],
+  },
+  {
+    id: 'hms',
+    label: 'Hospital Mgmt',
+    category: 'fullstack',
+    featured: true,
+    skills: ['React', 'Node.js', 'Express', 'MongoDB', 'Material UI'],
+  },
+  {
+    id: 'sms',
+    label: 'Student Mgmt',
+    category: 'backend',
+    featured: true,
+    skills: ['Java', 'Servlets', 'JSP', 'JDBC', 'MySQL'],
+  },
+  {
+    id: 'attendance',
+    label: 'Attendance',
+    category: 'fullstack',
+    featured: true,
+    skills: ['React', 'TypeScript', 'Vite', 'Tailwind', 'Recharts'],
+  },
+  {
+    id: 'nasa',
+    label: 'NASA APOD',
+    category: 'opensource',
+    featured: false,
+    skills: ['Android', 'Java', 'REST API', 'Mobile'],
+  },
+]
+
+const SKILLS_DATA = [
+  { name: 'Python', category: 'languages', level: 88 },
+  { name: 'TypeScript', category: 'languages', level: 85 },
+  { name: 'C', category: 'languages', level: 90 },
+  { name: 'Java', category: 'languages', level: 90 },
+
+  { name: 'FastAPI', category: 'frameworks', level: 90 },
+  { name: 'React', category: 'frameworks', level: 85 },
+  { name: 'Node.js', category: 'frameworks', level: 85 },
+
+  { name: 'Docker', category: 'devops', level: 88 },
+  { name: 'Kubernetes', category: 'devops', level: 75 },
+  { name: 'GitHub Actions', category: 'devops', level: 90 },
+  { name: 'Linux', category: 'devops', level: 85 },
+
+  { name: 'Git', category: 'tools', level: 95 },
+  { name: 'VS Code', category: 'tools', level: 95 },
+
+  { name: 'System Programming', category: 'concepts', level: 88 },
+  { name: 'API Design', category: 'concepts', level: 90 },
+  { name: 'DSA', category: 'concepts', level: 92 },
+]
+
+function createNodes(): GraphNode[] {
+  const nodes: GraphNode[] = []
+  const radius = 18
+  const centerY = 0
+
+  PROJECTS_DATA.forEach((project, index) => {
+    const angle =
+      (index / PROJECTS_DATA.length) * Math.PI * 2 - Math.PI / 2
+
+    const radiusOffset = radius + (project.featured ? 0 : 4)
+
+    nodes.push({
+      id: project.id,
+      type: 'project',
+      label: project.label,
+      category: project.category,
+      featured: project.featured,
+      position: new THREE.Vector3(
+        radiusOffset * Math.cos(angle),
+        centerY + (Math.random() - 0.5) * 4,
+        radiusOffset * Math.sin(angle),
+      ),
+      connections: [],
+      color: CATEGORY_COLORS[project.category] ?? 0xea580c,
+      size: project.featured ? 0.9 : 0.6,
+    })
+
+
+  })
+
+  const skillsByCategory: Record<string, typeof SKILLS_DATA> = {}
+
+  SKILLS_DATA.forEach((skill) => {
+    if (!skillsByCategory[skill.category]) {
+      skillsByCategory[skill.category] = []
+    }
+
+
+    skillsByCategory[skill.category].push(skill)
+
+
+  })
+
+  const categories = [
+    'languages',
+    'frameworks',
+    'devops',
+    'tools',
+    'concepts',
+  ]
+
+  Object.entries(skillsByCategory).forEach(([category, skills]) => {
+    const topSkills = [...skills]
+      .sort((a, b) => b.level - a.level)
+      .slice(0, 3)
+
+    const categoryIndex = categories.indexOf(category)
+
+    if (categoryIndex === -1) {
+      return
+    }
+
+    const categoryAngle =
+      categoryIndex * ((Math.PI * 2) / categories.length)
+
+    const categoryRadius = radius * 0.55
+
+    topSkills.forEach((skill, index) => {
+      const angle = categoryAngle + (index - 1) * 0.4
+      const skillRadius = categoryRadius + Math.random() * 2
+
+      nodes.push({
+        id: `skill-${skill.name.toLowerCase().replace(/\s+/g, '-')}`,
+        type: 'skill',
+        label: skill.name,
+        category,
+        proficiency: skill.level,
+        position: new THREE.Vector3(
+          skillRadius * Math.cos(angle),
+          centerY + (Math.random() - 0.5) * 3,
+          skillRadius * Math.sin(angle),
+        ),
+        connections: [],
+        color: CATEGORY_COLORS[category] ?? 0xea580c,
+        size: 0.35 + (skill.level / 100) * 0.25,
+      })
+    })
+
+
+  })
+
+  const projectNodes = nodes.filter((node) => node.type === 'project')
+  const skillNodes = nodes.filter((node) => node.type === 'skill')
+
+  projectNodes.forEach((project) => {
+    const projectData = PROJECTS_DATA.find(
+      (item) => item.id === project.id,
+    )
+
+    projectData?.skills.forEach((skillName) => {
+      const skillNode = skillNodes.find(
+        (skill) =>
+          skill.label.toLowerCase() === skillName.toLowerCase(),
+      )
+
+      if (!skillNode) {
+        return
+      }
+
+      project.connections.push(skillNode.id)
+      skillNode.connections.push(project.id)
+    })
+
+  })
+
+  return nodes
+}
+
+const NODES = createNodes()
+const NODE_MAP = new Map(NODES.map((node) => [node.id, node]))
+
+function createLabelTexture(text: string) {
+  const canvas = document.createElement('canvas')
+  const context = canvas.getContext('2d')
+
+  if (!context) {
+    return null
+  }
+
+  canvas.width = 256
+  canvas.height = 64
+
+  context.fillStyle = 'rgba(10, 14, 20, 0.92)'
+  context.fillRect(0, 0, canvas.width, canvas.height)
+
+  context.strokeStyle = '#EA580C'
+  context.lineWidth = 2
+  context.strokeRect(
+    2,
+    2,
+    canvas.width - 4,
+    canvas.height - 4,
+  )
+
+  context.font = 'bold 20px "Space Grotesk", sans-serif'
+  context.fillStyle = '#f0f4f8'
+  context.textAlign = 'center'
+  context.textBaseline = 'middle'
+
+  context.fillText(text, canvas.width / 2, canvas.height / 2)
+
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.needsUpdate = true
+
+  return texture
+}
+
+interface NetworkNodesProps {
+  time: React.MutableRefObject<number>
+  hoveredNode: GraphNode | null
+  reducedMotion: boolean
+  nodesRef: React.MutableRefObject<Map<string, THREE.Mesh>>
+}
+
+function NetworkNodes({
+  time,
+  hoveredNode,
+  reducedMotion,
+  nodesRef,
+}: NetworkNodesProps) {
+  const groupRef = useRef<THREE.Group>(null)
+
+  const labels = useMemo(() => {
+    if (reducedMotion) {
+      return []
+    }
+
+
+    return NODES.map((node) => {
+      const texture = createLabelTexture(node.label)
+
+      if (!texture) {
+        return null
+      }
+
+      const material = new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true,
+        opacity: 0,
+        depthTest: false,
+        depthWrite: false,
+      })
+
+      const sprite = new THREE.Sprite(material)
+
+      sprite.scale.set(5, 1.25, 1)
+      sprite.userData = {
+        nodeId: node.id,
+      }
+
+      return sprite
+    }).filter(Boolean) as THREE.Sprite[]
+
+
+  }, [reducedMotion])
 
   useEffect(() => {
-    const points = pointsRef.current
-    if (!points) return
+    return () => {
+      labels.forEach((label) => {
+        label.material.map?.dispose()
+        label.material.dispose()
+      })
+    }
+  }, [labels])
 
-    const count = positionsRef.current!.length / 3
-    const positions = positionsRef.current!
-    const velocities = velocitiesRef.current!
-    const phases = phasesRef.current!
+  useEffect(() => {
+    const map = nodesRef.current
 
-    const color1 = new THREE.Color(0x00d4aa)
-    const color2 = new THREE.Color(0x6366f1)
-    const color3 = new THREE.Color(0xf472b6)
 
-    for (let i = 0; i < count; i++) {
-      const i3 = i * 3
-      const radius = 20 + Math.random() * 40
-      const theta = Math.random() * Math.PI * 2
-      const phi = Math.acos(2 * Math.random() - 1)
-
-      positions[i3] = radius * Math.sin(phi) * Math.cos(theta)
-      positions[i3 + 1] = radius * Math.sin(phi) * Math.sin(theta)
-      positions[i3 + 2] = radius * Math.cos(phi)
-
-      const t = Math.random()
-      // eslint-disable-next-line no-useless-assignment
-      let c = color1
-      if (t < 0.33) c = color1
-      else if (t < 0.66) c = color2
-      else c = color3
-
-      points.geometry.attributes.color.array[i3] = c.r
-      points.geometry.attributes.color.array[i3 + 1] = c.g
-      points.geometry.attributes.color.array[i3 + 2] = c.b
-
-      velocities[i3] = (Math.random() - 0.5) * 0.002
-      velocities[i3 + 1] = (Math.random() - 0.5) * 0.002
-      velocities[i3 + 2] = (Math.random() - 0.5) * 0.002
-      phases[i] = Math.random() * Math.PI * 2
+    return () => {
+      map.clear()
     }
 
-    points.geometry.attributes.position.needsUpdate = true
-    points.geometry.attributes.color.needsUpdate = true
-  }, [])
 
-  useFrame((state, delta) => {
-    const points = pointsRef.current
-    if (!points) return
+  }, [nodesRef])
 
-    const positions = positionsRef.current!
-    const velocities = velocitiesRef.current!
-    const phases = phasesRef.current!
-    const count = positions.length / 3
+  useFrame((state) => {
+    const group = groupRef.current
+
+
+    if (!group) {
+      return
+    }
+
     const t = time.current
 
-    for (let i = 0; i < count; i++) {
-      const i3 = i * 3
-      positions[i3] += velocities[i3] * 100 * delta
-      positions[i3 + 1] += velocities[i3 + 1] * 100 * delta
-      positions[i3 + 2] += velocities[i3 + 2] * 100 * delta
+    group.rotation.y = reducedMotion ? 0 : t * 0.008
+    group.rotation.x = reducedMotion
+      ? 0
+      : Math.sin(t * 0.05) * 0.03
 
-      positions[i3 + 1] += Math.sin(t * 0.5 + phases[i]) * 0.5 * delta
-      positions[i3] += Math.cos(t * 0.3 + phases[i]) * 0.3 * delta
+    group.children.forEach((child) => {
+      const mesh = child as THREE.Mesh
+
+      if (!(mesh.userData?.node instanceof Object)) {
+        return
+      }
+
+      const node = mesh.userData.node as GraphNode
+      const originalPosition =
+        mesh.userData.originalPosition as THREE.Vector3
+
+      if (!reducedMotion) {
+        mesh.position.x =
+          originalPosition.x +
+          Math.sin(t * 0.3 + node.id.length) * 0.15
+
+        mesh.position.y =
+          originalPosition.y +
+          Math.cos(t * 0.25 + node.id.length) * 0.15
+
+        mesh.position.z =
+          originalPosition.z +
+          Math.sin(t * 0.2 + node.id.length) * 0.15
+
+        const pulseScale =
+          1 +
+          Math.sin(t * 1.2 + node.id.length) *
+          0.05 *
+          (node.proficiency ? node.proficiency / 100 : 1)
+
+        const currentScale =
+          mesh.userData.currentScale ?? 1
+
+        mesh.userData.currentScale = THREE.MathUtils.lerp(
+          currentScale,
+          pulseScale,
+          0.05,
+        )
+
+        mesh.scale.setScalar(mesh.userData.currentScale)
+      }
+
+      const label = labels.find(
+        (item) => item.userData.nodeId === node.id,
+      )
+
+      if (label) {
+        const worldPosition = new THREE.Vector3()
+
+        mesh.getWorldPosition(worldPosition)
+        label.position.copy(worldPosition)
+        label.position.y += node.size + 0.8
+
+        const isHovered = hoveredNode?.id === node.id
+
+        label.material.opacity = isHovered ? 1 : 0
+
+        label.scale.setScalar(isHovered ? 1.1 : 1)
+      }
+    })
+
+
+  })
+
+  return (<group ref={groupRef}>
+    {NODES.map((node) => (
+      <mesh
+        key={node.id}
+        ref={(mesh) => {
+          if (mesh) {
+            mesh.userData = {
+              node,
+              originalPosition: node.position.clone(),
+              currentScale: 1,
+            }
+
+            nodesRef.current.set(node.id, mesh)
+          } else {
+            nodesRef.current.delete(node.id)
+          }
+        }}
+        position={node.position}
+      >
+        <sphereGeometry
+          args={[node.size, 16, 16]}
+        />
+
+        <meshBasicMaterial
+          color={node.color}
+          transparent
+          opacity={node.type === 'project' ? 0.95 : 0.85}
+        />
+      </mesh>
+    ))}
+
+    {!reducedMotion &&
+      labels.map((label) => (
+        <primitive
+          key={label.userData.nodeId}
+          object={label}
+        />
+      ))}
+  </group>
+
+
+  )
+}
+
+function NetworkEdges() {
+  const geometryRef = useRef<THREE.BufferGeometry>(null)
+
+  const positions = useMemo(() => {
+    const data: number[] = []
+
+
+    NODES.forEach((node) => {
+      node.connections.forEach((targetId) => {
+        if (node.id >= targetId) {
+          return
+        }
+
+        const target = NODE_MAP.get(targetId)
+
+        if (!target) {
+          return
+        }
+
+        data.push(
+          node.position.x,
+          node.position.y,
+          node.position.z,
+          target.position.x,
+          target.position.y,
+          target.position.z,
+        )
+      })
+    })
+
+    return new Float32Array(data)
+
+
+  }, [])
+
+  useFrame(() => {
+    const geometry = geometryRef.current
+
+
+    if (!geometry) {
+      return
     }
 
-    // Mouse influence
-    if (mouse.current.x !== 0 || mouse.current.y !== 0) {
-      const mouse3D = new THREE.Vector2(mouse.current.x * 20, mouse.current.y * 20)
-      for (let i = 0; i < count; i++) {
-        const i3 = i * 3
-        const dist = Math.hypot(positions[i3] - mouse3D.x, positions[i3 + 1] - mouse3D.y)
-        if (dist < 30) {
-          const force = (30 - dist) / 30
-          positions[i3 + 2] += force * 5 * delta
+    const positionAttribute =
+      geometry.getAttribute('position')
+
+    if (!positionAttribute) {
+      return
+    }
+
+    let offset = 0
+
+    NODES.forEach((node) => {
+      node.connections.forEach((targetId) => {
+        if (node.id >= targetId) {
+          return
+        }
+
+        const target = NODE_MAP.get(targetId)
+
+        if (!target) {
+          return
+        }
+
+        positionAttribute.setXYZ(
+          offset,
+          node.position.x,
+          node.position.y,
+          node.position.z,
+        )
+
+        positionAttribute.setXYZ(
+          offset + 1,
+          target.position.x,
+          target.position.y,
+          target.position.z,
+        )
+
+        offset += 2
+      })
+    })
+
+    positionAttribute.needsUpdate = true
+
+
+  })
+
+  return (<lineSegments> <bufferGeometry ref={geometryRef}>
+    <bufferAttribute
+      attach="attributes-position"
+      args={[positions, 3]}
+    /> </bufferGeometry>
+
+
+    <lineBasicMaterial
+      color={0xea580c}
+      transparent
+      opacity={0.18}
+      blending={THREE.AdditiveBlending}
+      depthWrite={false}
+    />
+  </lineSegments>
+
+
+  )
+}
+
+function PacketFlow({
+  time,
+  reducedMotion,
+}: {
+  time: React.MutableRefObject<number>
+  reducedMotion: boolean
+}) {
+  const packetsRef = useRef<Packet[]>([])
+  const pointsRef = useRef<THREE.Points>(null)
+  const positionsRef = useRef<Float32Array>(
+    new Float32Array(60 * 3),
+  )
+
+  useFrame((_, delta) => {
+    const points = pointsRef.current
+
+    if (!points || reducedMotion) {
+      return
+    }
+
+    const positions = positionsRef.current
+    const t = time.current
+
+    if (
+      packetsRef.current.length < 60 &&
+      Math.random() < 0.08
+    ) {
+      const projectNodes = NODES.filter(
+        (node) => node.type === 'project',
+      )
+
+      if (projectNodes.length > 0) {
+        const source =
+          projectNodes[
+          Math.floor(
+            Math.random() * projectNodes.length,
+          )
+          ]
+
+        const connectedSkills = source.connections
+          .map((id) => NODE_MAP.get(id))
+          .filter(Boolean) as GraphNode[]
+
+        if (connectedSkills.length > 0) {
+          const target =
+            connectedSkills[
+            Math.floor(
+              Math.random() * connectedSkills.length,
+            )
+            ]
+
+          packetsRef.current.push({
+            id: Date.now() + Math.random(),
+            progress: 0,
+            speed: 0.5 + Math.random() * 0.5,
+            color: source.color,
+            sourceId: source.id,
+            targetId: target.id,
+          })
         }
       }
     }
 
+    packetsRef.current.forEach((packet, index) => {
+      const source = NODE_MAP.get(packet.sourceId)
+      const target = NODE_MAP.get(packet.targetId)
+
+      if (!source || !target) {
+        packet.progress = 1.1
+        return
+      }
+
+      packet.progress += packet.speed * delta
+
+      if (packet.progress >= 1) {
+        packet.progress = 1.1
+        return
+      }
+
+      const sourceX =
+        source.position.x +
+        Math.sin(t * 0.3 + source.id.length) * 0.15
+
+      const sourceY =
+        source.position.y +
+        Math.cos(t * 0.25 + source.id.length) * 0.15
+
+      const sourceZ =
+        source.position.z +
+        Math.sin(t * 0.2 + source.id.length) * 0.15
+
+      const targetX =
+        target.position.x +
+        Math.sin(t * 0.3 + target.id.length) * 0.15
+
+      const targetY =
+        target.position.y +
+        Math.cos(t * 0.25 + target.id.length) * 0.15
+
+      const targetZ =
+        target.position.z +
+        Math.sin(t * 0.2 + target.id.length) * 0.15
+
+      const p = packet.progress
+
+      const index3 = index * 3
+
+      positions[index3] =
+        sourceX + (targetX - sourceX) * p
+
+      positions[index3 + 1] =
+        sourceY +
+        (targetY - sourceY) * p +
+        Math.sin(p * Math.PI) * 0.5
+
+      positions[index3 + 2] =
+        sourceZ + (targetZ - sourceZ) * p
+    })
+
+    packetsRef.current = packetsRef.current.filter(
+      (packet) => packet.progress <= 1,
+    )
+
     points.geometry.attributes.position.needsUpdate = true
 
-    // Slow rotation
-    points.rotation.y += 0.0002
-    points.rotation.x = Math.sin(t * 0.1) * 0.1
+
   })
 
-  const geometry = useMemo(() => {
-    const geom = new THREE.BufferGeometry()
-    const positions = new Float32Array(count * 3)
-    const colors = new Float32Array(count * 3)
-    const sizes = new Float32Array(count)
-    const velocities = new Float32Array(count * 3)
-    const phases = new Float32Array(count)
+  return (<points ref={pointsRef}> <bufferGeometry>
+    <bufferAttribute
+      attach="attributes-position"
+      args={[positionsRef.current, 3]}
+    /> </bufferGeometry>
 
-    positionsRef.current = positions
-    velocitiesRef.current = velocities
-    phasesRef.current = phases
 
-    geom.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-    geom.setAttribute('color', new THREE.BufferAttribute(colors, 3))
-    geom.setAttribute('size', new THREE.BufferAttribute(sizes, 1))
-
-    return geom
-  }, [count])
-
-  const material = useMemo(() => {
-    const mat = new THREE.PointsMaterial({
-      size: 1,
-      vertexColors: true,
-      transparent: true,
-      opacity: 0.6,
-      sizeAttenuation: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    })
-    return mat
-  }, [])
-
-  return (
-    <points
-      ref={pointsRef}
-      geometry={geometry}
-      material={material}
+    <pointsMaterial
+      color={0xff8a3d}
+      size={0.18}
+      transparent
+      opacity={0.85}
+      sizeAttenuation
+      blending={THREE.AdditiveBlending}
+      depthWrite={false}
     />
+  </points>
+
+
   )
 }
 
-// Floating Geometric Shapes
-interface FloatingShapesProps {
-  time: { current: number }
-}
+function BackgroundMesh() {
+  const meshRef = useRef<THREE.Mesh>(null)
 
-function FloatingShapes({ time }: FloatingShapesProps) {
-  const shapesRef = useRef<THREE.Group>(null)
+  useFrame((state) => {
+    if (!meshRef.current) {
+      return
+    }
 
-  useFrame(() => {
-    const group = shapesRef.current
-    if (!group) return
 
-    group.children.forEach((mesh) => {
-      const userData = mesh.userData
-      if (!userData) return
+    const elapsed = state.clock.getElapsedTime()
 
-      mesh.rotation.x += userData.rotationSpeed.x
-      mesh.rotation.y += userData.rotationSpeed.y
-      mesh.rotation.z += userData.rotationSpeed.z
+    meshRef.current.rotation.y = elapsed * 0.002
+    meshRef.current.rotation.x =
+      Math.sin(elapsed * 0.01) * 0.01
 
-      mesh.position.y = userData.originalPosition.y + Math.sin(time.current * userData.speed) * 2
-      mesh.position.x = userData.originalPosition.x + Math.cos(time.current * userData.speed * 0.7) * 1.5
-    })
+
   })
 
-  const shapeData = useMemo(() => [
-    { type: 'octahedron', size: 3, color: 0x00d4aa, position: [-15, 10, -10], speed: 0.3 },
-    { type: 'tetrahedron', size: 2.5, color: 0x6366f1, position: [15, -5, -15], speed: 0.4 },
-    { type: 'icosahedron', size: 2, color: 0xf472b6, position: [-10, -15, 5], speed: 0.25 },
-    { type: 'torus', size: 2, color: 0xfbbf24, position: [10, 15, -5], speed: 0.35 },
-  ], [])
-
   return (
-    <group ref={shapesRef}>
-      {shapeData.map((data, i) => {
-        let geometry: THREE.BufferGeometry
-        switch (data.type) {
-          case 'octahedron':
-            geometry = new THREE.OctahedronGeometry(data.size, 0)
-            break
-          case 'tetrahedron':
-            geometry = new THREE.TetrahedronGeometry(data.size, 0)
-            break
-          case 'icosahedron':
-            geometry = new THREE.IcosahedronGeometry(data.size, 0)
-            break
-          case 'torus':
-            geometry = new THREE.TorusGeometry(data.size, 0.5, 8, 16)
-            break
-          default:
-            geometry = new THREE.BoxGeometry(data.size, data.size, data.size)
-        }
+  <mesh ref={meshRef}>
+    <sphereGeometry args={[60, 32, 32]} />
+    <meshBasicMaterial
+      color={0x0a0e14}
+      transparent
+      opacity={0.05}
+      side={THREE.BackSide}
+      wireframe
+    />
+  </mesh>
 
-        const edges = new THREE.EdgesGeometry(geometry)
-        const material = new THREE.LineBasicMaterial({
-          color: data.color,
-          transparent: true,
-          opacity: 0.4,
-        })
 
-        return (
-          <lineSegments
-            key={i}
-            geometry={edges}
-            material={material}
-            position={data.position as [number, number, number]}
-            userData={{
-              originalPosition: new THREE.Vector3(...data.position),
-              speed: data.speed,
-              rotationSpeed: new THREE.Vector3(
-                (Math.random() - 0.5) * 0.01,
-                (Math.random() - 0.5) * 0.01,
-                (Math.random() - 0.5) * 0.01
-              ),
-            }}
-          />
-        )
-      })}
-    </group>
   )
 }
 
 export function HeroScene() {
-  const { scene, camera } = useThree()
+  const { camera, gl } = useThree()
 
-  // Shared state
   const time = useRef(0)
-  const mouse = useRef({ x: 0, y: 0 })
-  const particleCount = 1500
+  const mouse = useRef(new THREE.Vector2())
+  const raycaster = useRef(new THREE.Raycaster())
 
-  // Mouse tracking
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      mouse.current.x = (e.clientX / window.innerWidth) * 2 - 1
-      mouse.current.y = -(e.clientY / window.innerHeight) * 2 + 1
+  const nodesRef = useRef<Map<string, THREE.Mesh>>(
+    new Map(),
+  )
+
+  const [hoveredNode, setHoveredNode] =
+    useState<GraphNode | null>(null)
+
+  const [reducedMotion] = useState(() => {
+    if (typeof window === 'undefined') {
+      return false
     }
-    window.addEventListener('mousemove', handleMouseMove)
-    return () => window.removeEventListener('mousemove', handleMouseMove)
+
+
+    return window.matchMedia(
+      '(prefers-reduced-motion: reduce)',
+    ).matches
+
+
+  })
+
+  useEffect(() => {
+    gl.setPixelRatio(
+      Math.min(window.devicePixelRatio, 2),
+    )
+  }, [gl])
+
+  useEffect(() => {
+    const handleMouseMove = (event: MouseEvent) => {
+      mouse.current.set(
+        (event.clientX / window.innerWidth) * 2 - 1,
+        -(event.clientY / window.innerHeight) * 2 + 1,
+      )
+    }
+
+
+    window.addEventListener(
+      'mousemove',
+      handleMouseMove,
+    )
+
+    return () => {
+      window.removeEventListener(
+        'mousemove',
+        handleMouseMove,
+      )
+    }
+
+
   }, [])
 
-  // Scroll parallax
   useEffect(() => {
     const handleScroll = () => {
-      const parallax = window.scrollY * 0.0005
-      camera.position.y = parallax * 10
-      camera.lookAt(0, parallax * 10, 0)
+      const parallax = window.scrollY * 0.0003
+
+
+      camera.position.y = parallax * 8
+      camera.lookAt(0, parallax * 8, 0)
     }
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
+
+    window.addEventListener('scroll', handleScroll, {
+      passive: true,
+    })
+
+    return () => {
+      window.removeEventListener(
+        'scroll',
+        handleScroll,
+      )
+    }
+
+
   }, [camera])
 
-  // Time update
   useFrame((_, delta) => {
     time.current += delta
   })
 
+  useFrame(() => {
+    if (reducedMotion) {
+      return
+    }
+
+
+    const meshes = Array.from(
+      nodesRef.current.values(),
+    )
+
+    if (meshes.length === 0) {
+      return
+    }
+
+    raycaster.current.setFromCamera(
+      mouse.current,
+      camera,
+    )
+
+    const intersections =
+      raycaster.current.intersectObjects(meshes)
+
+    if (intersections.length > 0) {
+      const node =
+        intersections[0].object.userData
+          ?.node as GraphNode | undefined
+
+      if (node && node.id !== hoveredNode?.id) {
+        setHoveredNode(node)
+      }
+    } else if (hoveredNode) {
+      setHoveredNode(null)
+    }
+
+
+  })
+
   return (
-    <>
-      <ParticleSystem count={particleCount} mouse={mouse} time={time} />
-      <FloatingShapes time={time} />
+    <> <BackgroundMesh />
+
+
+      <NetworkEdges />
+
+      <NetworkNodes
+        time={time}
+        hoveredNode={hoveredNode}
+        reducedMotion={reducedMotion}
+        nodesRef={nodesRef}
+      />
+
+      {!reducedMotion && (
+        <PacketFlow
+          time={time}
+          reducedMotion={reducedMotion}
+        />
+      )}
     </>
+
   )
 }

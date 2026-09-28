@@ -34,3 +34,12 @@ coverage/
 .cache/
 .vercel
 .netlify
+
+
+AGENTS.md
+
+skills-lock.json
+
+agent/ 
+.claude/
+.agents/

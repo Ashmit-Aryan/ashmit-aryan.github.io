@@ -1,11 +1,11 @@
 'use client'
 import React from 'react'
-import { useState } from 'react'
-import { motion } from 'framer-motion'
+import { useState, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Mail, GitBranch, User, Code, Send, CheckCircle, AlertCircle, Loader2, Download } from 'lucide-react'
+import { Mail, GitBranch, User, Code, Send, CheckCircle, AlertCircle, Loader2, Download, Copy, ExternalLink } from 'lucide-react'
 import { personalInfo } from '@/data/constants'
 import { Button } from '@/components/ui/Button'
 import { useToastActions } from '@/components/ui/Toaster'
@@ -56,21 +56,48 @@ const API_URL = "https://portfolio-api-three-eosin.vercel.app"
 export function Contact() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const [responseData, setResponseData] = useState<{ status: number; body: object } | null>(null)
   const { success: toastSuccess, error: toastError } = useToastActions()
 
   const {
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<ContactFormData>({
     resolver: zodResolver(contactSchema),
     mode: 'onBlur',
   })
 
+  const formValues = watch()
+
+  const requestPreview = useMemo(() => ({
+    method: 'POST',
+    url: `${API_URL}/api/contact`,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: formValues,
+  }), [formValues])
+
+  const copyCurl = () => {
+    const curl = `curl -X POST ${API_URL}/api/contact \\
+  -H "Content-Type: application/json" \\
+  -d '${JSON.stringify(formValues).replace(/'/g, "\\'")}'`
+    navigator.clipboard.writeText(curl)
+    toastSuccess('Copied!', 'cURL command copied to clipboard')
+  }
+
+  const copyEmail = () => {
+    navigator.clipboard.writeText(personalInfo.email)
+    toastSuccess('Copied!', 'Email copied to clipboard')
+  }
+
   const onSubmit = async (data: ContactFormData) => {
     setIsSubmitting(true)
     setSubmitStatus('idle')
+    setResponseData(null)
 
     try {
       const response = await fetch(`${API_URL}/api/contact`, {
@@ -81,16 +108,19 @@ export function Contact() {
         body: JSON.stringify(data),
       })
 
+      const responseBody = await response.json().catch(() => ({}))
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.detail || 'Failed to send message')
+        throw new Error(responseBody.detail || 'Failed to send message')
       }
 
       setSubmitStatus('success')
+      setResponseData({ status: response.status, body: responseBody })
       toastSuccess('Message sent!', "I'll get back to you within 24 hours.")
       reset()
     } catch (err) {
       setSubmitStatus('error')
+      setResponseData({ status: 500, body: { error: err instanceof Error ? err.message : 'Unknown error' } })
       toastError('Failed to send', err instanceof Error ? err.message : 'Please try again later')
     } finally {
       setIsSubmitting(false)
@@ -149,14 +179,23 @@ export function Contact() {
                     <span className="contact-method-label text-xs font-semibold uppercase tracking-wider text-fg-tertiary">
                       {method.label}
                     </span>
-                    <span className="contact-method-value text-base font-medium text-fg-primary truncate block">
+                    <span className="contact-method-value text-base font-medium text-fg-primary truncate block flex items-center gap-2">
                       {method.value}
+                      {method.label === 'Email' && (
+                        <button
+                          onClick={copyEmail}
+                          className="p-1 rounded hover:bg-accent-primary-dim transition-colors opacity-0 group-hover:opacity-100"
+                          aria-label="Copy email"
+                        >
+                          <Copy className="w-4 h-4 text-fg-tertiary hover:text-accent-primary" />
+                        </button>
+                      )}
                     </span>
                     <span className="contact-method-desc text-xs text-fg-muted mt-0.5 block">
                       {method.description}
                     </span>
                   </div>
-                  <Send className="w-5 h-5 text-fg-tertiary group-hover:text-accent-primary transition-colors" aria-hidden="true" />
+                  <ExternalLink className="w-5 h-5 text-fg-tertiary group-hover:text-accent-primary transition-colors" aria-hidden="true" />
                 </motion.a>
               ))}
             </div>
@@ -183,7 +222,7 @@ export function Contact() {
             </motion.div>
           </motion.div>
 
-          {/* Contact Form */}
+          {/* Contact Form - API Style */}
           <motion.div
             initial={{ opacity: 0, x: 30 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -194,6 +233,38 @@ export function Contact() {
               className="contact-form bg-bg-glass border border-border-secondary rounded-2xl p-8 backdrop-blur-md"
               noValidate
             >
+              {/* API Header */}
+              <div className="flex items-center justify-between mb-6 pb-4 border-b border-border-secondary">
+                <div className="flex items-center gap-2">
+                  <span className="kbd bg-accent-primary-dim text-accent-primary px-2 py-0.5 rounded font-mono text-xs">
+                    POST
+                  </span>
+                  <code className="font-mono text-sm text-fg-primary">/api/contact</code>
+                </div>
+                <button
+                  type="button"
+                  onClick={copyCurl}
+                  className="p-2 rounded hover:bg-bg-tertiary transition-colors text-fg-tertiary hover:text-fg-primary"
+                  aria-label="Copy as cURL"
+                >
+                  <Copy className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Live Request Preview */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-mono text-xs text-fg-tertiary uppercase tracking-wider">REQUEST PREVIEW</span>
+                  <span className="kbd bg-bg-tertiary border border-border-secondary px-2 py-0.5 rounded font-mono text-xs">
+                    Live
+                  </span>
+                </div>
+                <pre className="api-block">
+                  <code>{JSON.stringify(requestPreview, null, 2)}</code>
+                </pre>
+              </div>
+
+              {/* Form Fields */}
               <div className="space-y-6">
                 {/* Name */}
                 <div className="form-group">
@@ -323,8 +394,40 @@ export function Contact() {
                   )}
                 </Button>
 
-                {/* Status Messages */}
-                {submitStatus === 'success' && (
+                {/* Response Preview */}
+                <AnimatePresence>
+                  {responseData && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, height: 0 }}
+                      animate={{ opacity: 1, y: 0, height: 'auto' }}
+                      exit={{ opacity: 0, y: -10, height: 0 }}
+                      className="mt-6"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-mono text-xs text-fg-tertiary uppercase tracking-wider">RESPONSE</span>
+                        <span className={cn(
+                          'kbd px-2 py-0.5 rounded font-mono text-xs font-semibold',
+                          submitStatus === 'success' 
+                            ? 'bg-accent-primary-dim text-accent-primary' 
+                            : 'bg-accent-error/10 text-accent-error'
+                        )}>
+                          {responseData.status} {submitStatus === 'success' ? 'OK' : 'ERROR'}
+                        </span>
+                      </div>
+                      <pre className="api-block">
+                        <code>{JSON.stringify(responseData.body, null, 2)}</code>
+                      </pre>
+                      {submitStatus === 'success' && (
+                        <p className="text-sm text-accent-primary mt-2 flex items-center gap-1">
+                          <CheckCircle className="w-4 h-4" />
+                          Rate limit remaining: 59
+                        </p>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {submitStatus === 'success' && !responseData && (
                   <motion.p
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -336,7 +439,7 @@ export function Contact() {
                   </motion.p>
                 )}
 
-                {submitStatus === 'error' && (
+                {submitStatus === 'error' && !responseData && (
                   <motion.p
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}

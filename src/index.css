@@ -13,20 +13,20 @@
   --color-fg-tertiary: #6b7c93;
   --color-fg-muted: #4a5a70;
 
-  --color-accent-primary: #00d4aa;
-  --color-accent-primary-dim: rgba(0, 212, 170, 0.15);
-  --color-accent-secondary: #6366f1;
-  --color-accent-secondary-dim: rgba(99, 102, 241, 0.15);
-  --color-accent-tertiary: #f472b6;
-  --color-accent-tertiary-dim: rgba(244, 114, 182, 0.15);
+  --color-accent-primary: #EA580C;
+  --color-accent-primary-dim: rgba(234, 88, 12, 0.15);
+  --color-accent-secondary: #D97706;
+  --color-accent-secondary-dim: rgba(217, 119, 6, 0.15);
+  --color-accent-tertiary: #F97316;
+  --color-accent-tertiary-dim: rgba(249, 115, 22, 0.15);
   --color-accent-warning: #fbbf24;
   --color-accent-error: #ef4444;
 
   --color-border-primary: rgba(100, 116, 139, 0.3);
   --color-border-secondary: rgba(100, 116, 139, 0.15);
-  --color-border-focus: #00d4aa;
+  --color-border-focus: #EA580C;
 
-  --font-family-display: 'Space Grotesk', sans-serif;
+  --font-family-display: 'Syne', 'Space Grotesk', sans-serif;
   --font-family-mono: 'JetBrains Mono', monospace;
   --font-family-body: 'Space Grotesk', sans-serif;
 
@@ -65,8 +65,8 @@
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
   --shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.6);
-  --shadow-glow: 0 0 40px rgba(0, 212, 170, 0.15);
-  --shadow-glow-secondary: 0 0 40px rgba(99, 102, 241, 0.15);
+  --shadow-glow: 0 0 40px rgba(234, 88, 12, 0.15);
+  --shadow-glow-secondary: 0 0 40px rgba(217, 119, 6, 0.15);
 
   --transition-fast: 150ms;
   --transition-base: 250ms;
@@ -464,6 +464,42 @@
 
   .animate-spin-slow {
     animation: spin 20s linear infinite;
+  }
+
+  /* API-style code block */
+  .api-block {
+    @apply font-mono text-xs bg-bg-tertiary border border-border-secondary rounded-xl p-4 overflow-x-auto;
+  }
+  .api-block .key { @apply text-accent-secondary; }
+  .api-block .string { @apply text-accent-primary; }
+  .api-block .comment { @apply text-fg-muted; }
+
+  /* System specs drawer */
+  .specs-drawer {
+    @apply absolute inset-0 bg-bg-primary/95 backdrop-blur-md border-t border-border-secondary p-6 z-10;
+  }
+
+  /* Keyboard shortcut hint */
+  .kbd {
+    @apply font-mono text-xs px-2 py-0.5 bg-bg-tertiary border border-border-secondary rounded;
+  }
+
+  /* Typing effect */
+  .typing {
+    @apply relative overflow-hidden;
+  }
+  .typing::after {
+    content: '|';
+    @apply animate-pulse text-accent-primary;
+  }
+
+  /* Hide scrollbar */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }
 

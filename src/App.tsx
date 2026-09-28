@@ -1,11 +1,12 @@
-import { Suspense, lazy } from 'react'
-import React from 'react'
+import { Suspense, lazy, useMemo } from 'react'
 import { Canvas3D } from '@/components/canvas/Canvas3D'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { CursorFollower } from '@/components/ui/CursorFollower'
 import { ScrollProgress } from '@/components/ui/ScrollProgress'
 import { ToastProvider } from '@/components/ui/Toaster'
+import { personalInfo } from '@/data/constants'
+import { projects } from '@/data/projects'
 
 // Lazy load heavy sections
 const HeroSection = lazy(() => import('@/components/hero/Hero').then(m => ({ default: m.Hero })))
@@ -21,6 +22,21 @@ function LoadingFallback() {
       <div className="text-fg-tertiary font-mono text-sm">Loading...</div>
     </div>
   )
+}
+
+// Define scrollToSection at module level so it's always available
+const scrollToSection = (sectionId: string) => {
+  const element = document.getElementById(sectionId)
+  if (element) {
+    const headerOffset = 80
+    const elementPosition = element.getBoundingClientRect().top
+    const offsetPosition = elementPosition + window.scrollY - headerOffset
+    window.scrollTo({ top: offsetPosition, behavior: 'smooth' })
+  }
+}
+
+if (typeof window !== 'undefined') {
+  (window as unknown as Window & { scrollToSection: typeof scrollToSection }).scrollToSection = scrollToSection
 }
 
 export default function App() {

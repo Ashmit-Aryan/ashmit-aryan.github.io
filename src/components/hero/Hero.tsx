@@ -1,10 +1,11 @@
+// BUILD_TEST_1790117270
 'use client'
 import React from 'react'
 import { Link } from 'react-scroll'
-import { ArrowRight, Download, GitBranch, User, Code } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { ArrowRight, Download, GitBranch, User, Code, Mail, Copy, ExternalLink } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { personalInfo } from '@/data/constants'
-import { cn } from '@/utils'
+import { useToastActions } from '@/components/ui/Toaster'
 
 const socialLinks = [
   { href: personalInfo.social.github, label: 'GitHub', icon: GitBranch },
@@ -12,11 +13,54 @@ const socialLinks = [
   { href: personalInfo.social.leetcode, label: 'LeetCode', icon: Code },
 ]
 
+const taglines = [
+  'Software Developer',
+  'Tech Community Leader',
+  'Systems Engineer',
+]
+
 export function Hero() {
+  const { success: toastSuccess } = useToastActions()
+  const [typingText, setTypingText] = React.useState('')
+  const [isDeleting, setIsDeleting] = React.useState(false)
+  const currentTaglineRef = React.useRef(0)
+
+  React.useEffect(() => {
+    const type = () => {
+      const fullText = taglines[currentTaglineRef.current]
+      if (!isDeleting) {
+        setTypingText(fullText.slice(0, typingText.length + 1))
+        if (typingText.length === fullText.length) {
+          setTimeout(() => setIsDeleting(true), 2000)
+        }
+      } else {
+        setTypingText(fullText.slice(0, typingText.length - 1))
+        if (typingText.length === 0) {
+          setIsDeleting(false)
+          currentTaglineRef.current = (currentTaglineRef.current + 1) % taglines.length
+        }
+      }
+    }
+    const interval = setInterval(type, isDeleting ? 50 : 100)
+    return () => clearInterval(interval)
+  }, [typingText, isDeleting])
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text)
+    toastSuccess('Copied!', `${label} copied to clipboard`)
+  }
+
+  const metaItems = [
+    { label: 'Location', value: personalInfo.location, icon: null, copyable: false },
+    { label: 'Focus', value: 'Systems, API Design, DevOps', icon: null, copyable: false },
+    { label: 'Communities', value: 'TechStars, JHMUN, IIMUN', icon: null, copyable: false },
+    { label: 'Code', value: 'github.com/ashmit-aryan', icon: ExternalLink, copyable: true, href: personalInfo.social.github },
+    { label: 'Email', value: personalInfo.email, icon: Mail, copyable: true },
+  ]
+
   return (
     <section id="hero" className="hero relative min-h-screen flex items-center justify-center overflow-hidden" aria-labelledby="hero-title">
-      {/* Hero Content */}
-      <div className="hero-content relative z-10 text-center max-w-4xl mx-auto px-6 py-8">
+      <div className="hero-content relative z-10 max-w-5xl mx-auto px-6 py-8">
         {/* Badge */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -48,7 +92,7 @@ export function Hero() {
           </span>
           <span className="block overflow-hidden">
             <motion.span
-              className="hero-title-word hero-title-word--highlight block bg-gradient-to-r from-fg-primary via-accent-primary to-accent-secondary bg-clip-text text-transparent"
+              className="hero-title-word hero-title-word--highlight block bg-gradient-to-r from-fg-primary via-accent-primary to-accent-secondary bg-clip-text text-transparent cursor-pointer select-none hover:opacity-80 transition-opacity"
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               transition={{ duration: 0.8, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
@@ -63,53 +107,66 @@ export function Hero() {
               animate={{ y: 0 }}
               transition={{ duration: 0.8, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
             >
-              {personalInfo.title}
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={currentTaglineRef.current}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                  className="typing inline-block min-w-[280px]"
+                >
+                  {typingText}
+                </motion.span>
+              </AnimatePresence>
             </motion.span>
           </span>
         </motion.h1>
 
-        {/* Description */}
-        <motion.p
+        {/* Meta - Key Value Pairs */}
+        <motion.dl
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.6 }}
-          className="hero-description text-xl text-fg-secondary max-w-2xl mx-auto mb-10 leading-relaxed"
+          className="hero-meta grid gap-3 md:grid-cols-2 lg:grid-cols-3 max-w-3xl mx-auto mb-10 text-left"
         >
-          {personalInfo.bio.split('\n\n')[0]}
-        </motion.p>
-
-        {/* Stats */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.7 }}
-          className="hero-stats flex flex-wrap justify-center gap-10 mb-10"
-        >
-          <div className="stat text-center">
-            <div className="stat-number font-display text-3xl font-bold bg-gradient-to-r from-accent-primary to-accent-secondary bg-clip-text text-transparent mb-1">
-              {personalInfo.stats.projects}+
-            </div>
-            <div className="stat-label text-sm text-fg-tertiary font-medium">Projects Built</div>
-          </div>
-          <div className="stat text-center">
-            <div className="stat-number font-display text-3xl font-bold bg-gradient-to-r from-accent-primary to-accent-secondary bg-clip-text text-transparent mb-1">
-              {personalInfo.stats.hackathons}+
-            </div>
-            <div className="stat-label text-sm text-fg-tertiary font-medium">Hackathons</div>
-          </div>
-          <div className="stat text-center">
-            <div className="stat-number font-display text-3xl font-bold bg-gradient-to-r from-accent-primary to-accent-secondary bg-clip-text text-transparent mb-1">
-              {personalInfo.stats.contributions}+
-            </div>
-            <div className="stat-label text-sm text-fg-tertiary font-medium">Contributions</div>
-          </div>
-          <div className="stat text-center">
-            <div className="stat-number font-display text-3xl font-bold bg-gradient-to-r from-accent-primary to-accent-secondary bg-clip-text text-transparent mb-1">
-              {personalInfo.stats.stars}+
-            </div>
-            <div className="stat-label text-sm text-fg-tertiary font-medium">GitHub Stars</div>
-          </div>
-        </motion.div>
+          {metaItems.map((item, index) => (
+            <motion.div
+              key={item.label}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.7 + index * 0.08 }}
+              className="flex flex-col gap-1 group"
+            >
+              <dt className="font-mono text-xs text-fg-tertiary uppercase tracking-wider">{item.label}</dt>
+              <dd className="flex items-center gap-2 text-fg-secondary font-medium">
+                {item.href ? (
+                  <a
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-accent-primary transition-colors"
+                  >
+                    {item.value}
+                  </a>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    {item.value}
+                    {item.copyable && (
+                      <button
+                        onClick={() => copyToClipboard(item.value, item.label)}
+                        className="p-1 rounded hover:bg-accent-primary-dim transition-colors opacity-0 group-hover:opacity-100"
+                        aria-label={`Copy ${item.label}`}
+                      >
+                        <Copy className="w-4 h-4 text-fg-tertiary hover:text-accent-primary" />
+                      </button>
+                    )}
+                  </span>
+                )}
+              </dd>
+            </motion.div>
+          ))}
+        </motion.dl>
 
         {/* Actions */}
         <motion.div
@@ -145,7 +202,7 @@ export function Hero() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.9 }}
-          className="hero-social flex justify-center gap-5"
+          className="hero-social flex justify-center gap-5 mb-16"
         >
           {socialLinks.map((social) => (
             <a
@@ -176,29 +233,6 @@ export function Hero() {
           <div className="hero-scroll-wheel w-1 h-2 bg-accent-primary rounded-full" style={{ animation: 'wheelScroll 1.5s ease-in-out infinite' }} />
         </div>
       </motion.div>
-
-      {/* Floating decorative elements */}
-      <div className="floating-elements absolute inset-0 pointer-events-none" aria-hidden="true">
-        <div className="float-item absolute w-14 h-14 flex items-center justify-center bg-bg-glass border border-border-secondary rounded-xl text-fg-tertiary backdrop-blur-md" style={{ top: '20%', left: '5%', animationDelay: '0s' }}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
-            <rect x="3" y="3" width="18" height="18" rx="2" />
-            <path d="M9 9h6M9 15h6M9 12h4" />
-          </svg>
-        </div>
-        <div className="float-item absolute w-14 h-14 flex items-center justify-center bg-bg-glass border border-border-secondary rounded-xl text-fg-tertiary backdrop-blur-md" style={{ top: '60%', right: '5%', animationDelay: '-2s' }}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
-            <circle cx="12" cy="12" r="10" />
-            <path d="M12 6v6l4 2" />
-          </svg>
-        </div>
-        <div className="float-item absolute w-14 h-14 flex items-center justify-center bg-bg-glass border border-border-secondary rounded-xl text-fg-tertiary backdrop-blur-md" style={{ bottom: '20%', left: '10%', animationDelay: '-4s' }}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
-            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-            <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-            <line x1="12" y1="22.08" x2="12" y2="12" />
-          </svg>
-        </div>
-      </div>
     </section>
   )
-}
+}export const BUILD_MARKER = 'test-1790116658';

@@ -113,7 +113,7 @@ export function Footer() {
             <div>
               <h4 className="text-sm font-semibold text-fg-primary mb-4 uppercase tracking-wider">Connect</h4>
               <ul className="list-none space-y-2">
-                <li><a href={`mailto:${personalInfo.email}`} className="flex items-center gap-2 text-sm text-fg-tertiary hover:text-accent-primary transition-colors"><Mail className="w-4 h-4" aria-hidden="true" />{personalInfo.email}</a></li>
+                <li><a href={`mailto:${personalInfo.email}`} className="flex items-center gap-2 text-sm text-fg-tertiary hover:text-accent-primary transition-colors truncate"><Mail className="w-4 h-4 flex-shrink-0" aria-hidden="true" />{personalInfo.email}</a></li>
                 <li><a href={personalInfo.social.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-fg-tertiary hover:text-accent-primary transition-colors"><User className="w-4 h-4" aria-hidden="true" />LinkedIn</a></li>
                 <li><a href={personalInfo.social.github} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-fg-tertiary hover:text-accent-primary transition-colors"><GitBranch className="w-4 h-4" aria-hidden="true" />GitHub</a></li>
               </ul>

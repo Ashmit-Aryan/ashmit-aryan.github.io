@@ -1,5 +1,4 @@
 'use client'
-import React from 'react'
 import { Canvas } from '@react-three/fiber'
 import { HeroScene } from './HeroScene'
 import { useReducedMotion } from '@/hooks'
