@@ -1,0 +1,11 @@
+---
+id: "04"
+date: "2024.12.08"
+time: "14"
+title: "eBPF in Practice: Observing Socket Buffer Pressure Without Kernel Recompilation"
+summary: "Writing kprobes and raw tracepoints in C to inspect `sk_buff` drops and detect TCP window collapse on edge reverse proxies during ingress microbursts."
+tags: ["LINUX", "KERNEL", "EBPF"]
+filters: ["linux-kernel"]
+---
+
+Attach to `kfree_skb` tracepoints and bucket drop reasons per socket to see microbursts as they happen.

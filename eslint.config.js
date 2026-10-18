@@ -1,78 +1,40 @@
-import js from '@eslint/js'
-import globals from 'globals'
-import tseslint from 'typescript-eslint'
-import react from 'eslint-plugin-react'
-import reactHooks from 'eslint-plugin-react-hooks'
-import reactRefresh from 'eslint-plugin-react-refresh'
+import js from "@eslint/js";
+import eslintPluginPrettier from "eslint-plugin-prettier/recommended";
+import globals from "globals";
+import reactHooks from "eslint-plugin-react-hooks";
+import reactRefresh from "eslint-plugin-react-refresh";
+import tseslint from "typescript-eslint";
 
-export default [
+export default tseslint.config(
+  { ignores: ["dist", ".output", ".vinxi"] },
   {
-    ignores: ['dist', 'node_modules', '.vite'],
-  },
-
-  js.configs.recommended,
-
-  ...tseslint.configs.recommended,
-
-  {
-    files: ['**/*.{ts,tsx}'],
-
+    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    files: ["**/*.{ts,tsx}"],
     languageOptions: {
       ecmaVersion: 2020,
-
-      globals: {
-        ...globals.browser,
-        ...globals.es2020,
-      },
-
-      parserOptions: {
-        ecmaFeatures: {
-          jsx: true,
-        },
-        sourceType: 'module',
-      },
+      globals: globals.browser,
     },
-
-    settings: {
-      react: {
-        version: 'detect',
-      },
-    },
-
     plugins: {
-      react,
-      'react-hooks': reactHooks,
-      'react-refresh': reactRefresh,
+      "react-hooks": reactHooks,
+      "react-refresh": reactRefresh,
     },
-
     rules: {
-      ...react.configs.recommended.rules,
-
-      ...(reactHooks.configs?.recommended?.rules || {}),
-
-      // React 17+ / modern JSX transform
-      'react/react-in-jsx-scope': 'off',
-
-      // React Three Fiber uses custom JSX properties
-      'react/no-unknown-property': 'off',
-
-      'react/jsx-no-target-blank': 'off',
-
-      'react-refresh/only-export-components': [
-        'warn',
+      ...reactHooks.configs.recommended.rules,
+      "no-restricted-imports": [
+        "error",
         {
-          allowConstantExport: true,
+          paths: [
+            {
+              name: "server-only",
+              message:
+                "TanStack Start does not use the Next.js `server-only` package. Rename the module to `*.server.ts` or mark it with `@tanstack/react-start/server-only`.",
+            },
+          ],
         },
       ],
-
-      '@typescript-eslint/no-explicit-any': 'warn',
-
-      '@typescript-eslint/no-unused-vars': [
-        'warn',
-        {
-          argsIgnorePattern: '^_',
-        },
-      ],
+      "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
+      "@typescript-eslint/no-unused-vars": "off",
     },
   },
-]
+  eslintPluginPrettier,
+);
