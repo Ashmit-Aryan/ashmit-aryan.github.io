@@ -1,0 +1,11 @@
+---
+id: "03"
+date: "2025.06.20"
+time: "08"
+title: "Mechanical Sympathy: Designing CPU Cache-Conscious Go Structs"
+summary: "Practical memory alignment, struct field reordering to eliminate padding bytes, and preventing false sharing across L1/L2 cache lines under high concurrent Goroutine churn."
+tags: ["SYSTEMS", "GO", "PERFORMANCE"]
+filters: ["distributed-systems"]
+---
+
+Order fields largest to smallest, and pad hot counters to 64 bytes to stop cores fighting over one cache line.

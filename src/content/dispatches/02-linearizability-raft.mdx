@@ -1,0 +1,11 @@
+---
+id: "02"
+date: "2025.11.14"
+time: "11"
+title: "Linearizability vs. Sequential Consistency in Raft State Machines"
+summary: "Summary of subtle edge cases during split-brain leader elections and uncommitted log entry truncation under asymmetric WAN partitions. Includes TLA+ invariants."
+tags: ["DISTRIBUTED-SYSTEMS", "RAFT", "GO"]
+filters: ["distributed-systems", "consensus-raft"]
+---
+
+A stale leader can still serve reads after a partition. Read-index and lease-based reads close that gap — at a cost.

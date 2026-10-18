@@ -1,0 +1,11 @@
+---
+id: "05"
+date: "2024.08.03"
+time: "05"
+title: "Scaling Collegiate Operations: Low-Latency Badge Verification for 800+ Delegates"
+summary: "Post-mortem on JHMUN's zero-downtime offline-first accreditation network. Built with local SQLite sync replicas, cryptographic HMAC QR tokens, and local mDNS peer discovery."
+tags: ["ARCHITECTURE", "SYSTEMS", "OPERATIONS"]
+filters: ["architecture"]
+---
+
+Every check-in desk ran its own SQLite replica; HMAC-signed QR codes meant verification never needed the network.

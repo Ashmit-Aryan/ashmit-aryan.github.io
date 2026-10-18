@@ -1,0 +1,3 @@
+- [x] Add a dedicated blog page matching the supplied specification-sheet reference.
+- [x] Link the blog from the home page and navigation; keep only a return-home link on the blog page.
+- [x] Verify the layout and interactions on desktop and mobile.
